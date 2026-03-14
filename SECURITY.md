@@ -1,5 +1,8 @@
-# Security
+# Security Policy
 
-To report a vulnerability, email <24556+felipeelias@users.noreply.github.com> or open a [GitHub Security Advisory](https://github.com/felipeelias/claude-notifier/security/advisories/new).
+## Reporting a Vulnerability
+
+If you discover a security vulnerability, please report it privately
+via [GitHub Security Advisories](https://github.com/felipeelias/claude-notifier/security/advisories/new).
 
 Please do not open a public issue for security vulnerabilities.

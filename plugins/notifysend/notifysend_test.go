@@ -290,3 +290,21 @@ func TestSendExpireTimeZeroOmitted(t *testing.T) {
 	assert.NotContains(t, args, "-t", "expire_time=0 must not emit -t (DE default)")
 	assert.NotContains(t, args, "-i", "icon unset must not emit -i")
 }
+
+func TestSampleConfig(t *testing.T) {
+	p := &ns.NotifySend{}
+	cfg := p.SampleConfig()
+	// Header / block marker
+	assert.Contains(t, cfg, "[[notifiers.notify-send]]")
+	// Required field
+	assert.Contains(t, cfg, `path = "notify-send"`)
+	// Every configurable field is mentioned
+	assert.Contains(t, cfg, "message")
+	assert.Contains(t, cfg, "title")
+	assert.Contains(t, cfg, "app_name")
+	assert.Contains(t, cfg, "urgency")
+	assert.Contains(t, cfg, "icon")
+	assert.Contains(t, cfg, "expire_time")
+	// Vars section documented
+	assert.Contains(t, cfg, "[notifiers.notify-send.vars]")
+}

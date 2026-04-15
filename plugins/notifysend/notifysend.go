@@ -92,3 +92,45 @@ func (n *NotifySend) Send(ctx context.Context, notif notifier.Notification) erro
 
 	return nil
 }
+
+// SampleConfig returns example TOML configuration.
+func (n *NotifySend) SampleConfig() string {
+	return `## Linux desktop notifications via notify-send (libnotify)
+## https://man.archlinux.org/man/notify-send.1
+[[notifiers.notify-send]]
+
+## Path to the notify-send binary (required)
+## Install: apt install libnotify-bin  /  dnf install libnotify  /  pacman -S libnotify
+path = "notify-send"
+
+## Go template for the notification body
+## Available variables: {{.Message}}, {{.Title}}, {{.Project}}, {{.Cwd}},
+## {{.NotificationType}}, {{.SessionID}}, {{.TranscriptPath}}
+## Custom variables from [notifiers.notify-send.vars] are also available, title-cased
+# message = "{{.Message}}"
+
+## Go template for the notification title
+# title = "Claude Code ({{.Project}})"
+
+## App name shown in the notification center
+# app_name = "Claude Code"
+
+## Urgency: "auto" (maps permission_prompt -> critical, else normal),
+## or one of "low", "normal", "critical"
+# urgency = "auto"
+
+## Icon: a freedesktop icon name (e.g. "dialog-information",
+## "dialog-warning", "emblem-important") or an absolute path to an image
+# icon = ""
+
+## Expiration in milliseconds. Omit (or leave at 0) to use the DE default.
+## notify-send's own "0 = never" is shadowed: set a large value (e.g. 86400000)
+## if you need effectively-never.
+# expire_time = 0
+
+## User-defined template variables
+## Keys are title-cased for template access (env -> {{.Env}})
+# [notifiers.notify-send.vars]
+# env = "production"
+`
+}

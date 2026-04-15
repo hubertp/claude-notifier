@@ -211,3 +211,31 @@ func TestSendBadTemplate(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "rendering message template")
 }
+
+func TestSendBinaryNotFound(t *testing.T) {
+	p := &ns.NotifySend{
+		Path:    "/nonexistent/notify-send",
+		Message: "{{.Message}}",
+		Title:   "t",
+		Urgency: "normal",
+	}
+	err := p.Send(context.Background(), notifier.Notification{Message: "hi"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "running /nonexistent/notify-send")
+}
+
+func TestSendBinaryNonZeroExit(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "notify-send")
+	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\necho 'error' >&2\nexit 1\n"), 0755))
+
+	p := &ns.NotifySend{
+		Path:    script,
+		Message: "{{.Message}}",
+		Title:   "t",
+		Urgency: "normal",
+	}
+	err := p.Send(context.Background(), notifier.Notification{Message: "hi"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "running")
+}

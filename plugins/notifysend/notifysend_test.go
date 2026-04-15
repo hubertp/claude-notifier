@@ -153,3 +153,61 @@ func TestUrgencyAutoMap(t *testing.T) {
 		})
 	}
 }
+
+func TestSendTemplateRendering(t *testing.T) {
+	bin, logFile := fakeBinary(t)
+
+	p := &ns.NotifySend{
+		Path:    bin,
+		Message: "**{{.Project}}**: {{.Message}}",
+		Title:   "{{.NotificationType}}: {{.Title}}",
+		Urgency: "normal",
+	}
+	err := p.Send(context.Background(), notifier.Notification{
+		Message:          "Build complete",
+		Title:            "Claude Code",
+		Cwd:              "/home/user/myproject",
+		NotificationType: "idle_prompt",
+	})
+	require.NoError(t, err)
+
+	args := readArgs(t, logFile)
+	require.GreaterOrEqual(t, len(args), 2)
+	assert.Equal(t, "idle_prompt: Claude Code", args[len(args)-2])
+	assert.Equal(t, "**myproject**: Build complete", args[len(args)-1])
+}
+
+func TestSendWithVars(t *testing.T) {
+	bin, logFile := fakeBinary(t)
+
+	p := &ns.NotifySend{
+		Path:    bin,
+		Message: "{{.Env}}: {{.Message}}",
+		Title:   "{{.Title}}",
+		Urgency: "normal",
+		Vars:    map[string]string{"env": "production"},
+	}
+	err := p.Send(context.Background(), notifier.Notification{
+		Message: "done",
+		Title:   "test",
+	})
+	require.NoError(t, err)
+
+	args := readArgs(t, logFile)
+	require.GreaterOrEqual(t, len(args), 1)
+	assert.Equal(t, "production: done", args[len(args)-1])
+}
+
+func TestSendBadTemplate(t *testing.T) {
+	bin, _ := fakeBinary(t)
+
+	p := &ns.NotifySend{
+		Path:    bin,
+		Message: "{{.Invalid",
+		Title:   "t",
+		Urgency: "normal",
+	}
+	err := p.Send(context.Background(), notifier.Notification{Message: "hi"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "rendering message template")
+}

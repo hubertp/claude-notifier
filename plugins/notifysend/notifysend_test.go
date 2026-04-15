@@ -112,3 +112,44 @@ func TestPositionalOrder(t *testing.T) {
 	assert.Equal(t, "title-text", args[len(args)-2], "title must be second-to-last")
 	assert.Equal(t, "body-text", args[len(args)-1], "body must be last")
 }
+
+func TestUrgencyAutoMap(t *testing.T) {
+	cases := []struct {
+		name       string
+		configured string
+		notifType  string
+		want       string
+	}{
+		{"auto with permission_prompt", "auto", "permission_prompt", "critical"},
+		{"auto with idle_prompt", "auto", "idle_prompt", "normal"},
+		{"auto with auth_success", "auto", "auth_success", "normal"},
+		{"auto with elicitation_dialog", "auto", "elicitation_dialog", "normal"},
+		{"auto with unknown type", "auto", "something_else", "normal"},
+		{"auto with empty type", "auto", "", "normal"},
+		{"empty config with permission_prompt", "", "permission_prompt", "critical"},
+		{"empty config with idle_prompt", "", "idle_prompt", "normal"},
+		{"explicit low", "low", "permission_prompt", "low"},
+		{"explicit normal", "normal", "permission_prompt", "normal"},
+		{"explicit critical", "critical", "idle_prompt", "critical"},
+		{"passthrough unknown", "panic", "idle_prompt", "panic"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bin, logFile := fakeBinary(t)
+			p := &ns.NotifySend{
+				Path:    bin,
+				Message: "{{.Message}}",
+				Title:   "t",
+				Urgency: tc.configured,
+			}
+			err := p.Send(context.Background(), notifier.Notification{
+				Message:          "m",
+				NotificationType: tc.notifType,
+			})
+			require.NoError(t, err)
+
+			args := readArgs(t, logFile)
+			assertArgPair(t, args, "-u", tc.want)
+		})
+	}
+}

@@ -134,3 +134,16 @@ path = "notify-send"
 # env = "production"
 `
 }
+
+// Register adds notify-send to the given plugin registry.
+func Register(reg *notifier.Registry) {
+	err := reg.Register("notify-send", func() notifier.Notifier {
+		n := &NotifySend{}
+		ApplyDefaults(n)
+
+		return n
+	})
+	if err != nil {
+		panic(err)
+	}
+}

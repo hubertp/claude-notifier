@@ -138,6 +138,7 @@ Each plugin is configured under `[[notifiers.<name>]]` in the config file. Run `
 | Plugin | Description |
 | ------ | ----------- |
 | [ntfy](https://ntfy.sh) | HTTP-based push notifications |
+| [notify-send](https://man.archlinux.org/man/notify-send.1) | Linux desktop notifications via libnotify (requires a desktop/DBus session) |
 | [terminal-notifier](https://github.com/julienXX/terminal-notifier) | macOS desktop notifications |
 
 Want to add a plugin? See [CONTRIBUTING.md](CONTRIBUTING.md).

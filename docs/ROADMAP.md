@@ -11,10 +11,11 @@
 
 ### notify-send (Linux desktop notifications)
 
-- [ ] `notify-send` wrapper for native Linux desktop notifications
-- [ ] Configurable urgency level (low, normal, critical)
-- [ ] Configurable icon
-- [ ] Configurable expiration timeout
+- [x] `notify-send` wrapper for native Linux desktop notifications
+- [x] Configurable urgency level (low, normal, critical; auto-maps from NotificationType)
+- [x] Configurable icon
+- [x] Configurable expiration timeout
+- [ ] Same-session dedup via `-r` / `-p` (see plugin design spec)
 
 ### Slack webhook
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strconv"
 
 	"github.com/felipeelias/claude-notifier/internal/notifier"
 	"github.com/felipeelias/claude-notifier/internal/tmpl"
@@ -74,6 +75,12 @@ func (n *NotifySend) Send(ctx context.Context, notif notifier.Notification) erro
 	args := []string{"-u", mapUrgency(n.Urgency, notif.NotificationType)}
 	if n.AppName != "" {
 		args = append(args, "-a", n.AppName)
+	}
+	if n.Icon != "" {
+		args = append(args, "-i", n.Icon)
+	}
+	if n.ExpireTime != 0 {
+		args = append(args, "-t", strconv.Itoa(n.ExpireTime))
 	}
 	args = append(args, title, body)
 

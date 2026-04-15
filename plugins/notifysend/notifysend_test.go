@@ -239,3 +239,54 @@ func TestSendBinaryNonZeroExit(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "running")
 }
+
+func TestSendAllFlags(t *testing.T) {
+	bin, logFile := fakeBinary(t)
+
+	p := &ns.NotifySend{
+		Path:       bin,
+		Message:    "{{.Message}}",
+		Title:      "{{.Title}}",
+		AppName:    "My App",
+		Urgency:    "critical",
+		Icon:       "dialog-warning",
+		ExpireTime: 5000,
+	}
+	err := p.Send(context.Background(), notifier.Notification{
+		Message: "m",
+		Title:   "t",
+	})
+	require.NoError(t, err)
+
+	args := readArgs(t, logFile)
+	assertArgPair(t, args, "-u", "critical")
+	assertArgPair(t, args, "-a", "My App")
+	assertArgPair(t, args, "-i", "dialog-warning")
+	assertArgPair(t, args, "-t", "5000")
+
+	// Positional order preserved even with all optional flags present.
+	require.GreaterOrEqual(t, len(args), 2)
+	assert.Equal(t, "t", args[len(args)-2])
+	assert.Equal(t, "m", args[len(args)-1])
+}
+
+func TestSendExpireTimeZeroOmitted(t *testing.T) {
+	bin, logFile := fakeBinary(t)
+
+	p := &ns.NotifySend{
+		Path:       bin,
+		Message:    "{{.Message}}",
+		Title:      "{{.Title}}",
+		Urgency:    "normal",
+		ExpireTime: 0,
+	}
+	err := p.Send(context.Background(), notifier.Notification{
+		Message: "m",
+		Title:   "t",
+	})
+	require.NoError(t, err)
+
+	args := readArgs(t, logFile)
+	assert.NotContains(t, args, "-t", "expire_time=0 must not emit -t (DE default)")
+	assert.NotContains(t, args, "-i", "icon unset must not emit -i")
+}

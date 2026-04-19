@@ -59,3 +59,62 @@ func TestDedupFilename(t *testing.T) {
 			"non-hex char in filename: %q", c)
 	}
 }
+
+func TestReadIDMissing(t *testing.T) {
+	got := readID(filepath.Join(t.TempDir(), "nope.id"))
+	assert.Equal(t, 0, got)
+}
+
+func TestReadIDParse(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "id")
+	assert.NoError(t, os.WriteFile(path, []byte("42"), 0o600))
+
+	assert.Equal(t, 42, readID(path))
+}
+
+func TestReadIDTrimsWhitespace(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "id")
+	assert.NoError(t, os.WriteFile(path, []byte("  99\n"), 0o600))
+
+	assert.Equal(t, 99, readID(path))
+}
+
+func TestReadIDCorrupt(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "id")
+	assert.NoError(t, os.WriteFile(path, []byte("garbage"), 0o600))
+
+	assert.Equal(t, 0, readID(path), "unparseable contents must be treated as missing")
+}
+
+func TestWriteIDAtomic(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "id")
+
+	err := writeID(path, 1234)
+	assert.NoError(t, err)
+
+	data, err := os.ReadFile(path)
+	assert.NoError(t, err)
+	assert.Equal(t, "1234", string(data))
+
+	// No orphan temp files left behind.
+	entries, err := os.ReadDir(dir)
+	assert.NoError(t, err)
+	assert.Len(t, entries, 1)
+	assert.Equal(t, "id", entries[0].Name())
+}
+
+func TestWriteIDOverwrites(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "id")
+
+	assert.NoError(t, writeID(path, 1))
+	assert.NoError(t, writeID(path, 2))
+
+	data, err := os.ReadFile(path)
+	assert.NoError(t, err)
+	assert.Equal(t, "2", string(data))
+}

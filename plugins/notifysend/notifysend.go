@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/felipeelias/claude-notifier/internal/notifier"
 	"github.com/felipeelias/claude-notifier/internal/tmpl"
@@ -69,6 +70,43 @@ func stateDir() (string, error) {
 	}
 
 	return root, nil
+}
+
+// readID returns the stored notification ID at path, or 0 on any failure
+// (missing file, permission denied, unparseable contents). A zero return
+// is the signal to the caller that there is no prior notification to
+// replace — the next send will be a fresh one.
+func readID(path string) int {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+
+	id, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return 0
+	}
+
+	return id
+}
+
+// writeID atomically writes id to path using a temp-file + rename.
+// Safe against torn reads; a crash mid-write leaves either the old
+// file or an orphan .tmp that readID ignores.
+func writeID(path string, id int) error {
+	tmp := path + ".tmp"
+	err := os.WriteFile(tmp, []byte(strconv.Itoa(id)), 0o600)
+	if err != nil {
+		return fmt.Errorf("writing temp state file %s: %w", tmp, err)
+	}
+
+	err = os.Rename(tmp, path)
+	if err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("renaming state file to %s: %w", path, err)
+	}
+
+	return nil
 }
 
 // mapUrgency resolves the configured urgency into a concrete notify-send value.

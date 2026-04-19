@@ -3,10 +3,12 @@
 package notifysend
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -146,6 +148,15 @@ func (n *NotifySend) Send(ctx context.Context, notif notifier.Notification) erro
 		return err
 	}
 
+	replaceKey := ""
+	if n.ReplaceKey != "" {
+		replaceKey, err = tmpl.Render("replace_key", n.ReplaceKey, tctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	statePath := ""
 	args := []string{"-u", mapUrgency(n.Urgency, notif.NotificationType)}
 	if n.AppName != "" {
 		args = append(args, "-a", n.AppName)
@@ -156,12 +167,42 @@ func (n *NotifySend) Send(ctx context.Context, notif notifier.Notification) erro
 	if n.ExpireTime != 0 {
 		args = append(args, "-t", strconv.Itoa(n.ExpireTime))
 	}
+	if replaceKey != "" {
+		dir, derr := stateDir()
+		if derr != nil {
+			slog.Warn("notify-send: state dir unavailable, sending without dedup", "err", derr)
+		} else {
+			statePath = filepath.Join(dir, dedupFilename(replaceKey))
+			prev := readID(statePath)
+			if prev > 0 {
+				args = append(args, "-r", strconv.Itoa(prev))
+			}
+			args = append(args, "-p")
+		}
+	}
 	args = append(args, title, body)
 
 	cmd := exec.CommandContext(ctx, n.Path, args...)
-	output, err := cmd.CombinedOutput()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
 	if err != nil {
-		return fmt.Errorf("running %s: %s: %w", n.Path, string(output), err)
+		return fmt.Errorf("running %s: %s: %w", n.Path, stderr.String(), err)
+	}
+
+	if statePath != "" {
+		out := strings.TrimSpace(stdout.String())
+		newID, perr := strconv.Atoi(out)
+		if perr != nil {
+			slog.Debug("notify-send did not return a parseable id", "stdout", out)
+		} else {
+			werr := writeID(statePath, newID)
+			if werr != nil {
+				slog.Warn("notify-send: failed to persist id", "err", werr)
+			}
+		}
 	}
 
 	return nil

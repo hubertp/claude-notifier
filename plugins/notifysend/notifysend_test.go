@@ -306,6 +306,7 @@ func TestSampleConfig(t *testing.T) {
 	assert.Contains(t, cfg, "urgency")
 	assert.Contains(t, cfg, "icon")
 	assert.Contains(t, cfg, "expire_time")
+	assert.Contains(t, cfg, "replace_key")
 	// Vars section documented
 	assert.Contains(t, cfg, "[notifiers.notify-send.vars]")
 }

@@ -97,6 +97,13 @@ path = "notify-send"
 ## if you need effectively-never.
 # expire_time = 0
 
+## Replace previous notifications from the same session (dedup).
+## Go template — defaults to the Claude Code session ID so repeated
+## notifications from one session update in place. Set to "" to disable.
+## State lives under $XDG_RUNTIME_DIR/claude-notifier/notify-send/
+## (or $TMPDIR/claude-notifier-<uid>/notify-send/ if unset).
+# replace_key = "{{.SessionID}}"
+
 ## User-defined template variables
 ## Keys are title-cased for template access (env -> {{.Env}})
 # [notifiers.notify-send.vars]

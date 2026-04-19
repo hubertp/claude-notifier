@@ -167,6 +167,9 @@ func (n *NotifySend) Send(ctx context.Context, notif notifier.Notification) erro
 	if n.ExpireTime != 0 {
 		args = append(args, "-t", strconv.Itoa(n.ExpireTime))
 	}
+	// Concurrent sends for the same key can race on read→exec→write; the
+	// worst case is one duplicate notification. We accept that over a file
+	// lock — see docs/superpowers/specs/2026-04-18-dedup-notify-send-design.md (Concurrency).
 	if replaceKey != "" {
 		dir, derr := stateDir()
 		if derr != nil {

@@ -4,6 +4,8 @@ package notifysend
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -36,6 +38,14 @@ func ApplyDefaults(n *NotifySend) {
 }
 
 func (n *NotifySend) Name() string { return "notify-send" }
+
+// dedupFilename returns the state filename for a rendered dedup key.
+// sha256 → first 16 hex chars → ".id". Filesystem-safe and collision-
+// resistant enough for per-user state (64-bit prefix).
+func dedupFilename(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:8]) + ".id"
+}
 
 // mapUrgency resolves the configured urgency into a concrete notify-send value.
 // Empty or "auto" → derive from NotificationType; anything else → pass through

@@ -31,6 +31,7 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, "Claude Code ({{.Project}})", p.Title)
 	assert.Equal(t, "Claude Code", p.AppName)
 	assert.Equal(t, "auto", p.Urgency)
+	assert.Equal(t, "{{.SessionID}}", p.ReplaceKey)
 }
 
 // fakeBinary creates a shell script that logs all args to a file, newline-separated.

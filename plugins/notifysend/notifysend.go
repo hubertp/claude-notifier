@@ -21,6 +21,7 @@ type NotifySend struct {
 	Urgency    string            `toml:"urgency"`
 	Icon       string            `toml:"icon"`
 	ExpireTime int               `toml:"expire_time"`
+	ReplaceKey string            `toml:"replace_key"`
 	Vars       map[string]string `toml:"vars"`
 }
 
@@ -31,6 +32,7 @@ func ApplyDefaults(n *NotifySend) {
 	n.Title = "Claude Code ({{.Project}})"
 	n.AppName = "Claude Code"
 	n.Urgency = "auto"
+	n.ReplaceKey = "{{.SessionID}}"
 }
 
 func (n *NotifySend) Name() string { return "notify-send" }

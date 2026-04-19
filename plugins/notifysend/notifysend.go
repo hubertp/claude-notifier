@@ -7,7 +7,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 
 	"github.com/felipeelias/claude-notifier/internal/notifier"
@@ -45,6 +47,28 @@ func (n *NotifySend) Name() string { return "notify-send" }
 func dedupFilename(key string) string {
 	sum := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(sum[:8]) + ".id"
+}
+
+// stateDir returns the directory for per-key notification-ID state files,
+// creating it on demand. Prefers $XDG_RUNTIME_DIR (tmpfs, cleared on
+// logout/reboot — matches notify-send ID lifetime). Falls back to
+// $TMPDIR/claude-notifier-<uid>/notify-send/ when XDG_RUNTIME_DIR is unset.
+func stateDir() (string, error) {
+	var root string
+	if xdg := os.Getenv("XDG_RUNTIME_DIR"); xdg != "" {
+		root = filepath.Join(xdg, "claude-notifier", "notify-send")
+	} else {
+		root = filepath.Join(os.TempDir(),
+			fmt.Sprintf("claude-notifier-%d", os.Getuid()),
+			"notify-send")
+	}
+
+	err := os.MkdirAll(root, 0o700)
+	if err != nil {
+		return "", fmt.Errorf("creating state dir %s: %w", root, err)
+	}
+
+	return root, nil
 }
 
 // mapUrgency resolves the configured urgency into a concrete notify-send value.

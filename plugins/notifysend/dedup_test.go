@@ -1,11 +1,43 @@
 package notifysend
 
 import (
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestStateDirXDG(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_RUNTIME_DIR", xdg)
+
+	got, err := stateDir()
+	assert.NoError(t, err)
+	assert.Equal(t, filepath.Join(xdg, "claude-notifier", "notify-send"), got)
+
+	info, err := os.Stat(got)
+	assert.NoError(t, err)
+	assert.True(t, info.IsDir())
+}
+
+func TestStateDirFallback(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", "")
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp)
+
+	got, err := stateDir()
+	assert.NoError(t, err)
+
+	expected := filepath.Join(tmp, "claude-notifier-"+strconv.Itoa(os.Getuid()), "notify-send")
+	assert.Equal(t, expected, got)
+
+	info, err := os.Stat(got)
+	assert.NoError(t, err)
+	assert.True(t, info.IsDir())
+}
 
 func TestDedupFilename(t *testing.T) {
 	// Deterministic: same input → same output.

@@ -31,17 +31,25 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, "Claude Code ({{.Project}})", p.Title)
 	assert.Equal(t, "Claude Code", p.AppName)
 	assert.Equal(t, "auto", p.Urgency)
+	assert.Equal(t, "{{.SessionID}}", p.ReplaceKey)
 }
 
-// fakeBinary creates a shell script that logs all args to a file, newline-separated.
-// Returns the script path and the log file path.
+// fakeBinary creates a shell script that logs all args to a file and optionally
+// prints an ID to stdout. The ID comes from the FAKE_NOTIFY_SEND_ID env var so
+// each test can set it per-invocation; if the env var is unset, nothing is
+// printed. Returns the script path and the args log path.
 func fakeBinary(t *testing.T) (string, string) {
 	t.Helper()
 	dir := t.TempDir()
 	logFile := filepath.Join(dir, "args.log")
 	script := filepath.Join(dir, "notify-send")
-	content := fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n' \"$@\" > %s\n", logFile)
-	require.NoError(t, os.WriteFile(script, []byte(content), 0755))
+	content := fmt.Sprintf(
+		"#!/bin/sh\n"+
+			"printf '%%s\\n' \"$@\" > %s\n"+
+			"if [ -n \"$FAKE_NOTIFY_SEND_ID\" ]; then printf '%%s' \"$FAKE_NOTIFY_SEND_ID\"; fi\n",
+		logFile,
+	)
+	require.NoError(t, os.WriteFile(script, []byte(content), 0o755))
 
 	return script, logFile
 }
@@ -73,11 +81,12 @@ func TestSend(t *testing.T) {
 	bin, logFile := fakeBinary(t)
 
 	p := &ns.NotifySend{
-		Path:    bin,
-		Message: "{{.Message}}",
-		Title:   "{{.Title}}",
-		AppName: "Claude Code",
-		Urgency: "auto",
+		Path:       bin,
+		Message:    "{{.Message}}",
+		Title:      "{{.Title}}",
+		AppName:    "Claude Code",
+		Urgency:    "auto",
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{
 		Message: "Task complete",
@@ -99,10 +108,11 @@ func TestPositionalOrder(t *testing.T) {
 	bin, logFile := fakeBinary(t)
 
 	p := &ns.NotifySend{
-		Path:    bin,
-		Message: "body-text",
-		Title:   "title-text",
-		Urgency: "low",
+		Path:       bin,
+		Message:    "body-text",
+		Title:      "title-text",
+		Urgency:    "low",
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{Message: "unused"})
 	require.NoError(t, err)
@@ -137,10 +147,11 @@ func TestUrgencyAutoMap(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			bin, logFile := fakeBinary(t)
 			p := &ns.NotifySend{
-				Path:    bin,
-				Message: "{{.Message}}",
-				Title:   "t",
-				Urgency: tc.configured,
+				Path:       bin,
+				Message:    "{{.Message}}",
+				Title:      "t",
+				Urgency:    tc.configured,
+				ReplaceKey: "",
 			}
 			err := p.Send(context.Background(), notifier.Notification{
 				Message:          "m",
@@ -158,10 +169,11 @@ func TestSendTemplateRendering(t *testing.T) {
 	bin, logFile := fakeBinary(t)
 
 	p := &ns.NotifySend{
-		Path:    bin,
-		Message: "**{{.Project}}**: {{.Message}}",
-		Title:   "{{.NotificationType}}: {{.Title}}",
-		Urgency: "normal",
+		Path:       bin,
+		Message:    "**{{.Project}}**: {{.Message}}",
+		Title:      "{{.NotificationType}}: {{.Title}}",
+		Urgency:    "normal",
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{
 		Message:          "Build complete",
@@ -181,11 +193,12 @@ func TestSendWithVars(t *testing.T) {
 	bin, logFile := fakeBinary(t)
 
 	p := &ns.NotifySend{
-		Path:    bin,
-		Message: "{{.Env}}: {{.Message}}",
-		Title:   "{{.Title}}",
-		Urgency: "normal",
-		Vars:    map[string]string{"env": "production"},
+		Path:       bin,
+		Message:    "{{.Env}}: {{.Message}}",
+		Title:      "{{.Title}}",
+		Urgency:    "normal",
+		Vars:       map[string]string{"env": "production"},
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{
 		Message: "done",
@@ -202,10 +215,11 @@ func TestSendBadTemplate(t *testing.T) {
 	bin, _ := fakeBinary(t)
 
 	p := &ns.NotifySend{
-		Path:    bin,
-		Message: "{{.Invalid",
-		Title:   "t",
-		Urgency: "normal",
+		Path:       bin,
+		Message:    "{{.Invalid",
+		Title:      "t",
+		Urgency:    "normal",
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{Message: "hi"})
 	require.Error(t, err)
@@ -214,10 +228,11 @@ func TestSendBadTemplate(t *testing.T) {
 
 func TestSendBinaryNotFound(t *testing.T) {
 	p := &ns.NotifySend{
-		Path:    "/nonexistent/notify-send",
-		Message: "{{.Message}}",
-		Title:   "t",
-		Urgency: "normal",
+		Path:       "/nonexistent/notify-send",
+		Message:    "{{.Message}}",
+		Title:      "t",
+		Urgency:    "normal",
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{Message: "hi"})
 	require.Error(t, err)
@@ -230,10 +245,11 @@ func TestSendBinaryNonZeroExit(t *testing.T) {
 	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\necho 'error' >&2\nexit 1\n"), 0755))
 
 	p := &ns.NotifySend{
-		Path:    script,
-		Message: "{{.Message}}",
-		Title:   "t",
-		Urgency: "normal",
+		Path:       script,
+		Message:    "{{.Message}}",
+		Title:      "t",
+		Urgency:    "normal",
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{Message: "hi"})
 	require.Error(t, err)
@@ -251,6 +267,7 @@ func TestSendAllFlags(t *testing.T) {
 		Urgency:    "critical",
 		Icon:       "dialog-warning",
 		ExpireTime: 5000,
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{
 		Message: "m",
@@ -279,6 +296,7 @@ func TestSendExpireTimeZeroOmitted(t *testing.T) {
 		Title:      "{{.Title}}",
 		Urgency:    "normal",
 		ExpireTime: 0,
+		ReplaceKey: "",
 	}
 	err := p.Send(context.Background(), notifier.Notification{
 		Message: "m",
@@ -305,6 +323,7 @@ func TestSampleConfig(t *testing.T) {
 	assert.Contains(t, cfg, "urgency")
 	assert.Contains(t, cfg, "icon")
 	assert.Contains(t, cfg, "expire_time")
+	assert.Contains(t, cfg, "replace_key")
 	// Vars section documented
 	assert.Contains(t, cfg, "[notifiers.notify-send.vars]")
 }

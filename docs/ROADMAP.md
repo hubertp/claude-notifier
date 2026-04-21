@@ -15,7 +15,7 @@
 - [x] Configurable urgency level (low, normal, critical; auto-maps from NotificationType)
 - [x] Configurable icon
 - [x] Configurable expiration timeout
-- [ ] Same-session dedup via `-r` / `-p` (see plugin design spec)
+- [x] Same-session dedup via `-r` / `-p`
 
 ### Slack webhook
 
